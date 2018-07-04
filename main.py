@@ -84,6 +84,7 @@ def process_statuses_for_chat(group_id):
                 print('Downloading profile photo of user', user.id, '(', name.strip(), ')')
                 client.download_profile_photo(user, user_photo_path, download_big=True)
         record_user_activity(group_id, user.id, user.username, user.first_name, user.last_name, get_user_status(user))
+    print(time.strftime('%H:%M', time.gmtime()), '-', 'Data for chat', group_id, 'saved')
 
 
 def stats_job():
