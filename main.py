@@ -1,4 +1,4 @@
-from telethon import TelegramClient, tl
+from telethon import TelegramClient, tl, sync
 import yaml
 import time
 import datetime
@@ -12,8 +12,7 @@ STATUS_ONLINE = 'online'
 config = yaml.load(open(CONFIG_FILE_NAME))
 interval = config['interval']
 
-client = TelegramClient('activity_script', config['api_id'], config['api_id'])
-client.start()
+client = TelegramClient('activity_script', config['api_id'], config['api_hash']).start()
 
 def record_user_activity(group_id, user_id, username, first_name, last_name, status):
     # save it to file
