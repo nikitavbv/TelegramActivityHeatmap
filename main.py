@@ -5,6 +5,7 @@ import datetime
 import schedule
 import os.path
 import sqlite3
+import time
 
 CONFIG_FILE_NAME = 'config.yaml'
 DATABASE_NAME = 'activity.db'
@@ -24,11 +25,15 @@ def init_database():
 
     if not db_table_exists('activity'):
         print('Creating activity database table')
-        db.execute('CREATE TABLE activity (group_id integer, user_id integer, online boolean)')
+        db.execute('CREATE TABLE activity (group_id integer, timestamp integer, user_id integer, online boolean)')
 
     if not db_table_exists('users'):
         print('Creating users database table')
-        db.execute('CREATE TABLE users (id interger, username text, first_name text, last_name text)')
+        db.execute('CREATE TABLE users (id interger, username text, first_name text, last_name text, PRIMARY KEY (id))')
+
+    if not db_table_exists('dialogs'):
+        print('Creating dialogs database table')
+        db.execute('CREATE TABLE dialogs (id integer, title text, PRIMARY KEY(id))')
 
 
 def db_table_exists(table_name):
@@ -36,8 +41,26 @@ def db_table_exists(table_name):
     return query.fetchone() is not None
 
 
+def save_dialog_name(dialog_id, dialog_name):
+    db.execute('INSERT OR IGNORE INTO dialogs (id, title) VALUES (?, ?)', (dialog_id, dialog_name))
+    db.execute('UPDATe dialogs SET title = ? WHERE id = ?', (dialog_name, dialog_id))
+    db.commit()
+
+
 def record_user_activity(group_id, user_id, username, first_name, last_name, status):
-    print(group_id, user_id, username, first_name, last_name, status)
+    timestamp = round(time.time())
+
+    # insert or update user info
+    db.execute('INSERT OR IGNORE INTO users (id, username, first_name, last_name) VALUES(?, ?, ?, ?)', 
+                (user_id, username, first_name, last_name))
+    db.execute('UPDATE users SET username=?, first_name=?, last_name=? WHERE id=?',
+                (username, first_name, last_name, user_id))
+
+    # save activity info
+    db.execute('INSERT INTO activity (group_id, timestamp, user_id, online) VALUES (?, ?, ?, ?)',
+               (group_id, timestamp, user_id, status==STATUS_ONLINE))
+
+    db.commit()
 
 
 def get_user_status(user):
@@ -60,6 +83,7 @@ def stats_job():
     print(time.strftime('%H:%M', time.gmtime()), '-', 'Running iteration')
     for dialog in client.get_dialogs():
         if dialog.title in config['target_groups']:
+            save_dialog_name(dialog.entity.id, dialog.title)
             process_statuses_for_chat(dialog.entity.id)
 
 
