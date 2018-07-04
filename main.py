@@ -76,6 +76,13 @@ def get_user_status(user):
 
 def process_statuses_for_chat(group_id):
     for user in client.iter_participants(client.get_entity(group_id)):
+        if user.photo is not None:
+            user_photo_path = 'photos/{}.png'.format(user.id)
+            if not os.path.isfile(user_photo_path):
+                name = user.first_name or ''
+                name += ' ' + (user.last_name or '')
+                print('Downloading profile photo of user', user.id, '(', name.strip(), ')')
+                client.download_profile_photo(user, user_photo_path, download_big=True)
         record_user_activity(group_id, user.id, user.username, user.first_name, user.last_name, get_user_status(user))
 
 
