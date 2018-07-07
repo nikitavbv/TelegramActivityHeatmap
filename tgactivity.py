@@ -7,7 +7,6 @@ import os.path
 import sqlite3
 import time
 import sys
-from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -126,7 +125,7 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
         timestamp, user_id, online = row
         if user_id not in activity:
             activity[user_id] = {}
-        record_day = datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0)
+        record_day = datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0)
         record_time = timestamp - record_day.timestamp()
         interval_number = int(record_time % interval)
         if interval_number not in activity[user_id]:
@@ -137,13 +136,43 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             online_intervals += 1
         activity[user_id][interval_number] = (online_intervals, total_intervals)
 
-    print(activity)
+    # create a sorted list of users based on overall acitivty
+    total_activity = {}
+    users = []
+    for user in activity:
+        users.append(user)
+        total_online = 0
+        total_intervals = 0
+        for data in activity[user].values():
+            online_time, intervals = data
+            total_online += online_time
+            total_intervals += intervals
+        total_activity[user] = float(total_online) / total_intervals
+    users.sort(key=lambda x: -total_activity[x])
+    
+    # fonts
+    header_font = ImageFont.truetype('fonts/Roboto/Roboto-Thin.ttf', 34)
+    usernames_font_size = 16
+    usernames_font = ImageFont.truetype('fonts/Roboto/Roboto-Regular.ttf', usernames_font_size)
 
     # export image
     img = Image.new('RGB', (600, 800), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    robotoThin = ImageFont.truetype('fonts/Roboto/Roboto-Thin.ttf', 34)
-    draw.text((8,8), dialog_name, (0,0,0), font=robotoThin)
+    draw.text((8,8), dialog_name, (0,0,0), font=header_font)
+
+    row_number = 0
+    row_height = 40 # px
+    for user_id in users:
+        username, first_name, last_name = db.execute('SELECT username, first_name, last_name FROM users WHERE id =? LIMIT 1', (user_id,)).fetchone()
+        display_name = ((first_name or '') + ' ' + (last_name or '')).strip() or ('@' + username)
+        photo_path = 'photos/{}.png'.format(user_id)
+        has_photo = os.path.exists(photo_path)
+        if has_photo:
+            user_photo = Image.open(photo_path, 'r')
+            user_photo.thumbnail((row_height, row_height), Image.ANTIALIAS)
+            img.paste(user_photo, (0, 50 + row_height*row_number))
+        draw.text((row_height+8,50 + row_height*row_number + (row_height - usernames_font_size)/2), display_name, (0,0,0), font=usernames_font)
+        row_number += 1
 
     img.show()
 
