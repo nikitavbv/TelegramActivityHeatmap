@@ -6,6 +6,9 @@ import schedule
 import os.path
 import sqlite3
 import time
+import sys
+
+from PIL import Image
 
 CONFIG_FILE_NAME = 'config.yaml'
 DATABASE_NAME = 'activity.db'
@@ -95,10 +98,36 @@ def stats_job():
             process_statuses_for_chat(dialog.entity.id)
 
 
-if __name__ == "__main__":
+def collect_data():
+    print('Collecting chat activity data')
     init_database()
     stats_job()
     schedule.every(interval).seconds.do(stats_job)
     while True:
         schedule.run_pending()
         time.sleep(1)
+
+
+def export_data():
+    init_database()
+
+    for row in db.execute('SELECT * FROM dialogs'):
+        dialog_id, dialog_name = row
+        print('Exporting heatmap for', dialog_name)
+        export_heatmap_for_dialog(dialog_id)
+
+
+def export_heatmap_for_dialog(dialog_id):
+    img = Image.new('RGB', (600, 800), (255, 255, 255))
+    img.show()
+
+    if not os.path.exists('export'):
+        os.makedirs('export')
+    img.save('export/{}.png'.format(dialog_id))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == 'export':
+        export_data()
+    else:
+        collect_data()
