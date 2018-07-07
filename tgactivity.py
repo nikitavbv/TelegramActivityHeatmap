@@ -8,7 +8,7 @@ import sqlite3
 import time
 import sys
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 CONFIG_FILE_NAME = 'config.yaml'
 DATABASE_NAME = 'activity.db'
@@ -114,11 +114,15 @@ def export_data():
     for row in db.execute('SELECT * FROM dialogs'):
         dialog_id, dialog_name = row
         print('Exporting heatmap for', dialog_name)
-        export_heatmap_for_dialog(dialog_id)
+        export_heatmap_for_dialog(dialog_id, dialog_name)
 
 
-def export_heatmap_for_dialog(dialog_id):
+def export_heatmap_for_dialog(dialog_id, dialog_name):
     img = Image.new('RGB', (600, 800), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    robotoThin = ImageFont.truetype('fonts/Roboto/Roboto-Thin.ttf', 34)
+    draw.text((8,8), dialog_name, (0,0,0), font=robotoThin)
+
     img.show()
 
     if not os.path.exists('export'):
