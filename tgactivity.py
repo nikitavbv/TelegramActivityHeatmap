@@ -7,6 +7,7 @@ import os.path
 import sqlite3
 import time
 import sys
+from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -118,6 +119,27 @@ def export_data():
 
 
 def export_heatmap_for_dialog(dialog_id, dialog_name):
+    # prepare data
+    activity = {}
+
+    for row in db.execute('SELECT timestamp, user_id, online FROM activity WHERE group_id = ?', (dialog_id,)):
+        timestamp, user_id, online = row
+        if user_id not in activity:
+            activity[user_id] = {}
+        record_day = datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0)
+        record_time = timestamp - record_day.timestamp()
+        interval_number = int(record_time % interval)
+        if interval_number not in activity[user_id]:
+            activity[user_id][interval_number] = (0, 0) # online, total
+        online_intervals, total_intervals = activity[user_id][interval_number]
+        total_intervals += 1
+        if online == 1:
+            online_intervals += 1
+        activity[user_id][interval_number] = (online_intervals, total_intervals)
+
+    print(activity)
+
+    # export image
     img = Image.new('RGB', (600, 800), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     robotoThin = ImageFont.truetype('fonts/Roboto/Roboto-Thin.ttf', 34)
