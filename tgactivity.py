@@ -7,6 +7,7 @@ import os.path
 import sqlite3
 import time
 import sys
+import math
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -14,6 +15,20 @@ CONFIG_FILE_NAME = 'config.yaml'
 DATABASE_NAME = 'activity.db'
 STATUS_OFFLINE = 'offline'
 STATUS_ONLINE = 'online'
+
+color_scheme = [
+    (255,255, 255),
+    (227, 242, 253),
+    (187, 222, 251),
+    (144, 202, 249),
+    (100, 181, 246),
+    (66, 165, 245),
+    (33, 150, 243),
+    (30, 136, 229),
+    (25, 118, 210),
+    (21, 101, 192),
+    (13, 71, 161)
+]
 
 config = yaml.load(open(CONFIG_FILE_NAME))
 interval = config['interval']
@@ -156,7 +171,7 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
     usernames_font = ImageFont.truetype('fonts/Roboto/Roboto-Regular.ttf', usernames_font_size)
 
     # export image
-    img = Image.new('RGB', (600, 800), (255, 255, 255))
+    img = Image.new('RGB', (1000, 800), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     draw.text((8,8), dialog_name, (0,0,0), font=header_font)
 
@@ -172,9 +187,23 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             user_photo.thumbnail((row_height, row_height), Image.ANTIALIAS)
             img.paste(user_photo, (0, 50 + row_height*row_number))
         draw.text((row_height+8,50 + row_height*row_number + (row_height - usernames_font_size)/2), display_name, (0,0,0), font=usernames_font)
+        
+        # draw graph
+        user_activity = activity[user_id]
+        graph_width = 900
+        total_intervals = int(24*60*60/interval)
+        interval_width = graph_width / total_intervals
+        for graph_index in range(total_intervals):
+            if graph_index not in user_activity:
+                continue
+            current_offset = math.floor(graph_index*interval_width)
+            current_width = math.floor((graph_index+1)*(interval_width)) - current_offset
+            interval_online, interval_total = user_activity[graph_index]
+            color_for_interval = color_scheme[min(math.floor(len(color_scheme)/interval_total*interval_online), len(color_scheme)-1)]
+            draw.rectangle((row_height+150+current_offset, 50+row_height*row_number, row_height+150+current_offset+current_width, 50+row_height*(row_number+1)), color_for_interval, color_for_interval)
         row_number += 1
 
-    img.show()
+    # img.show()
 
     if not os.path.exists('export'):
         os.makedirs('export')
