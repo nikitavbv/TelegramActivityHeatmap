@@ -8,6 +8,7 @@ import sqlite3
 import time
 import sys
 import math
+import pytz
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -82,7 +83,7 @@ def record_user_activity(group_id, user_id, username, first_name, last_name, sta
 
 
 def get_user_status(user):
-    time_now = datetime.datetime.utcnow()
+    time_now = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
     if type(user.status) == tl.types.UserStatusOnline:
         return STATUS_ONLINE
     elif hasattr(user.status, 'was_online'):
