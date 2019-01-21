@@ -87,7 +87,7 @@ def get_user_status(user):
     if type(user.status) == tl.types.UserStatusOnline:
         return STATUS_ONLINE
     elif hasattr(user.status, 'was_online'):
-        seconds_diff = (time_now-user.status.was_online).total_seconds()
+        seconds_diff = (time_now-user.status.was_online.replace(tzinfo=pytz.UTC)).total_seconds()
         if seconds_diff < interval:
             return STATUS_ONLINE
     return STATUS_OFFLINE
