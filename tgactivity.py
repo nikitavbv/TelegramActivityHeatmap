@@ -33,6 +33,7 @@ color_scheme = [
 
 config = yaml.load(open(CONFIG_FILE_NAME))
 interval = config['interval']
+export_interval = config['export_interval']
 
 db = None
 
@@ -150,7 +151,7 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             activity[user_id] = {}
         record_day = datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0)
         record_time = timestamp - record_day.timestamp()
-        interval_number = int(record_time // interval)
+        interval_number = int(record_time // export_interval)
         if interval_number not in activity[user_id]:
             activity[user_id][interval_number] = (0, 0) # online, total
         online_intervals, total_intervals = activity[user_id][interval_number]
@@ -179,14 +180,28 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
     usernames_font = ImageFont.truetype('fonts/Roboto/Roboto-Regular.ttf', usernames_font_size)
 
     display_names = {x: get_display_name_by_user_id(x) for x in users}
-    username_column_width = max(map(lambda x: usernames_font.getsize(x)[0], display_names.values()))
+    username_column_width = max(map(lambda x: usernames_font.getsize(x)[0], display_names.values())) + 40
 
     # export image
-    graph_width = 900
+    total_intervals = int(24 * 60 * 60 / export_interval)
     row_height = 40 # px
+    interval_width = row_height
+    graph_width = interval_width * total_intervals
     img = Image.new('RGB', (graph_width + username_column_width + 50, 50 + row_height * len(users)), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     draw.text((8,8), dialog_name, (0,0,0), font=header_font)
+
+    # draw hours
+    prev_inteval = -1
+    for i in range(24):
+        interval_number = float(total_intervals) / 24 * i
+        if interval_number != prev_inteval:
+            current_offset = math.floor((interval_number + 1)*interval_width)
+            x_pos = row_height+username_column_width+current_offset - interval_width / 2
+            x_pos -= usernames_font.getsize(str(i))[0] / 2
+            y_pos = 8 + header_font.getsize(dialog_name)[1] - usernames_font.getsize(str(i))[1]
+            draw.text((x_pos, y_pos), str(i), (0,0,0), font=usernames_font)
+        prev_inteval = interval_number
 
     row_number = 0
     for user_id in users:
@@ -201,8 +216,6 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
         
         # draw graph
         user_activity = activity[user_id]
-        total_intervals = int(24*60*60/interval)
-        interval_width = graph_width / total_intervals
         for graph_index in range(total_intervals):
             if graph_index not in user_activity:
                 continue
