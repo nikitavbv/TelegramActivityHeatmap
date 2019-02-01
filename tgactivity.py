@@ -38,6 +38,7 @@ db = None
 
 client = TelegramClient('activity_script', config['api_id'], config['api_hash']).start()
 
+
 def init_database():
     global db
     db = sqlite3.connect(DATABASE_NAME)
@@ -48,7 +49,7 @@ def init_database():
 
     if not db_table_exists('users'):
         print('Creating users database table')
-        db.execute('CREATE TABLE users (id interger, username text, first_name text, last_name text, PRIMARY KEY (id))')
+        db.execute('CREATE TABLE users (id integer, username text, first_name text, last_name text, PRIMARY KEY (id))')
 
     if not db_table_exists('dialogs'):
         print('Creating dialogs database table')
@@ -62,7 +63,7 @@ def db_table_exists(table_name):
 
 def save_dialog_name(dialog_id, dialog_name):
     db.execute('INSERT OR IGNORE INTO dialogs (id, title) VALUES (?, ?)', (dialog_id, dialog_name))
-    db.execute('UPDATe dialogs SET title = ? WHERE id = ?', (dialog_name, dialog_id))
+    db.execute('UPDATE dialogs SET title = ? WHERE id = ?', (dialog_name, dialog_id))
     db.commit()
 
 
@@ -143,7 +144,7 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             activity[user_id] = {}
         record_day = datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0)
         record_time = timestamp - record_day.timestamp()
-        interval_number = int(record_time % interval)
+        interval_number = int(record_time // interval)
         if interval_number not in activity[user_id]:
             activity[user_id][interval_number] = (0, 0) # online, total
         online_intervals, total_intervals = activity[user_id][interval_number]
@@ -172,7 +173,7 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
     usernames_font = ImageFont.truetype('fonts/Roboto/Roboto-Regular.ttf', usernames_font_size)
 
     # export image
-    img = Image.new('RGB', (1000, 800), (255, 255, 255))
+    img = Image.new('RGB', (2000, 5000), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     draw.text((8,8), dialog_name, (0,0,0), font=header_font)
 
@@ -180,7 +181,7 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
     row_height = 40 # px
     for user_id in users:
         username, first_name, last_name = db.execute('SELECT username, first_name, last_name FROM users WHERE id =? LIMIT 1', (user_id,)).fetchone()
-        display_name = ((first_name or '') + ' ' + (last_name or '')).strip() or ('@' + username)
+        display_name = ((first_name or '') + ' ' + (last_name or '')).strip() or ('@' + (username or ' '))
         photo_path = 'photos/{}.png'.format(user_id)
         has_photo = os.path.exists(photo_path)
         if has_photo:
