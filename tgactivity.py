@@ -56,6 +56,12 @@ def init_database():
         db.execute('CREATE TABLE dialogs (id integer, title text, PRIMARY KEY(id))')
 
 
+def get_display_name_by_user_id(user_id):
+    username, first_name, last_name = db.execute(
+        'SELECT username, first_name, last_name FROM users WHERE id =? LIMIT 1', (user_id,)).fetchone()
+    return ((first_name or '') + ' ' + (last_name or '')).strip() or ('@' + (username or ' '))
+
+
 def db_table_exists(table_name):
     query = db.execute('SELECT name FROM sqlite_master WHERE type="table" AND name=?', (table_name, ))
     return query.fetchone() is not None
@@ -172,16 +178,19 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
     usernames_font_size = 16
     usernames_font = ImageFont.truetype('fonts/Roboto/Roboto-Regular.ttf', usernames_font_size)
 
+    display_names = {x: get_display_name_by_user_id(x) for x in users}
+    username_column_width = max(map(lambda x: usernames_font.getsize(x)[0], display_names.values()))
+
     # export image
-    img = Image.new('RGB', (2000, 5000), (255, 255, 255))
+    graph_width = 900
+    row_height = 40 # px
+    img = Image.new('RGB', (graph_width + username_column_width + 50, 50 + row_height * len(users)), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     draw.text((8,8), dialog_name, (0,0,0), font=header_font)
 
     row_number = 0
-    row_height = 40 # px
     for user_id in users:
-        username, first_name, last_name = db.execute('SELECT username, first_name, last_name FROM users WHERE id =? LIMIT 1', (user_id,)).fetchone()
-        display_name = ((first_name or '') + ' ' + (last_name or '')).strip() or ('@' + (username or ' '))
+        display_name = get_display_name_by_user_id(user_id)
         photo_path = 'photos/{}.png'.format(user_id)
         has_photo = os.path.exists(photo_path)
         if has_photo:
@@ -192,7 +201,6 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
         
         # draw graph
         user_activity = activity[user_id]
-        graph_width = 900
         total_intervals = int(24*60*60/interval)
         interval_width = graph_width / total_intervals
         for graph_index in range(total_intervals):
@@ -202,7 +210,7 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             current_width = math.floor((graph_index+1)*(interval_width)) - current_offset
             interval_online, interval_total = user_activity[graph_index]
             color_for_interval = color_scheme[min(math.floor(len(color_scheme)/interval_total*interval_online), len(color_scheme)-1)]
-            draw.rectangle((row_height+150+current_offset, 50+row_height*row_number, row_height+150+current_offset+current_width, 50+row_height*(row_number+1)), color_for_interval, color_for_interval)
+            draw.rectangle((row_height+username_column_width+current_offset, 50+row_height*row_number, row_height+username_column_width+current_offset+current_width, 50+row_height*(row_number+1)), color_for_interval, color_for_interval)
         row_number += 1
 
     # img.show()
