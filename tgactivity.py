@@ -172,8 +172,12 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             total_online += online_time
             total_intervals += intervals
         total_activity[user] = float(total_online) / total_intervals
+
     users.sort(key=lambda x: -total_activity[x])
-    
+    for user in total_activity:
+        if total_activity[user] == 0:
+            users.remove(user)
+
     # fonts
     header_font = ImageFont.truetype('fonts/Roboto/Roboto-Thin.ttf', 34)
     usernames_font_size = 16
@@ -199,11 +203,12 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             current_offset = math.floor((interval_number + 1)*interval_width)
             x_pos = row_height+username_column_width+current_offset - interval_width / 2
             x_pos -= usernames_font.getsize(str(i))[0] / 2
-            y_pos = 8 + header_font.getsize(dialog_name)[1] - usernames_font.getsize(str(i))[1]
+            y_pos = 8 + header_font.getsize(dialog_name)[1] + 15 - usernames_font.getsize(str(i))[1]
             draw.text((x_pos, y_pos), str(i), (0,0,0), font=usernames_font)
         prev_inteval = interval_number
 
     row_number = 0
+    offset_top = 65
     for user_id in users:
         display_name = get_display_name_by_user_id(user_id)
         photo_path = 'photos/{}.png'.format(user_id)
@@ -211,8 +216,8 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
         if has_photo:
             user_photo = Image.open(photo_path, 'r')
             user_photo.thumbnail((row_height, row_height), Image.ANTIALIAS)
-            img.paste(user_photo, (0, 50 + row_height*row_number))
-        draw.text((row_height+8,50 + row_height*row_number + (row_height - usernames_font_size)/2), display_name, (0,0,0), font=usernames_font)
+            img.paste(user_photo, (0, offset_top + row_height*row_number))
+        draw.text((row_height+8,offset_top + row_height*row_number + (row_height - usernames_font_size)/2), display_name, (0,0,0), font=usernames_font)
         
         # draw graph
         user_activity = activity[user_id]
@@ -223,7 +228,9 @@ def export_heatmap_for_dialog(dialog_id, dialog_name):
             current_width = math.floor((graph_index+1)*(interval_width)) - current_offset
             interval_online, interval_total = user_activity[graph_index]
             color_for_interval = color_scheme[min(math.floor(len(color_scheme)/interval_total*interval_online), len(color_scheme)-1)]
-            draw.rectangle((row_height+username_column_width+current_offset, 50+row_height*row_number, row_height+username_column_width+current_offset+current_width, 50+row_height*(row_number+1)), color_for_interval, color_for_interval)
+            draw.rectangle((row_height+username_column_width+current_offset, offset_top+row_height*row_number,
+                            row_height+username_column_width+current_offset+current_width,
+                            offset_top+row_height*(row_number+1)), color_for_interval, color_for_interval)
         row_number += 1
 
     # img.show()
