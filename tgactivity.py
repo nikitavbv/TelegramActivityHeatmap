@@ -1,4 +1,5 @@
 from telethon import TelegramClient, tl, sync
+from telethon.errors.rpcbaseerrors import BadMessageError
 import yaml
 import datetime
 import schedule
@@ -115,11 +116,14 @@ def process_statuses_for_chat(group_id):
 
 def stats_job():
     print(time.strftime('%H:%M', time.gmtime()), '-', 'Running iteration')
-    for dialog in client.get_dialogs():
-        if dialog.title in config['target_groups'] or str(dialog.id) in config['target_groups']:
-            client.download_profile_photo(dialog, 'photos/dialog{}.png'.format(dialog.entity.id), download_big=True)
-            save_dialog_name(dialog.entity.id, dialog.title)
-            process_statuses_for_chat(dialog.entity.id)
+    try:
+        for dialog in client.get_dialogs():
+            if dialog.title in config['target_groups'] or str(dialog.id) in config['target_groups']:
+                client.download_profile_photo(dialog, 'photos/dialog{}.png'.format(dialog.entity.id), download_big=True)
+                save_dialog_name(dialog.entity.id, dialog.title)
+                process_statuses_for_chat(dialog.entity.id)
+    except BadMessageError:
+        print(time.strftime('%H:%M', time.gmtime()), '-', 'BadMessageError')
 
 def collect_data():
     print('Collecting chat activity data')
